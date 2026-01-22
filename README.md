@@ -1,4 +1,4 @@
-# SCALES prototype
+# prototype for the causal variability module in SCALES
 
 ## Status
 
