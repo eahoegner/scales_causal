@@ -1,4 +1,21 @@
-# prototype for the causal variability module in SCALES
+# My Python repo
+<!--- Adding a one-line description of what this repository is for here may be
+helpful -->
+<!---
+
+We recommend having a status line in your repo to tell anyone who stumbles
+on your repository where you're up to. Some suggested options:
+
+- prototype: the project is just starting up and the code is all prototype
+- development: the project is actively being worked on
+- finished: the project has achieved what it wanted and is no longer being
+  worked on, we won't reply to any issues
+- dormant: the project is no longer worked on but we might come back to it, if
+  you have questions, feel free to raise an issue
+- abandoned: this project is no longer worked on and we won't reply to any
+  issues
+
+-->
 
 ## Status
 
@@ -6,16 +23,16 @@
 
 ## Installation
 
-We do all our environment management using [pixi](https://pixi.sh/latest).
-To get started, you will need to make sure that pixi is installed
-([instructions here](https://pixi.sh/latest),
-we found that using the pixi provided script was best on a Mac).
+We do all our environment management using [uv](https://docs.astral.sh/uv/).
+To get started, you will need to make sure that uv is installed
+([instructions here](https://docs.astral.sh/uv/getting-started/installation/),
+we found that using uv's standalone installer was best on a Mac).
 
 To create the virtual environment, run
 
 ```sh
-pixi install
-pixi run pre-commit install
+uv sync
+uv run pre-commit install
 ```
 
 These steps are also captured in the `Makefile` so if you want a single
@@ -25,19 +42,19 @@ Having installed your virtual environment, you can now run commands in your
 virtual environment using
 
 ```sh
-pixi run <command>
+uv run <command>
 ```
 
 For example, to run Python within the virtual environment, run
 
 ```sh
-pixi run python
+uv run python
 ```
 
 As another example, to run a notebook server, run
 
 ```sh
-pixi run jupyter lab
+uv run jupyter lab
 ```
 
 <!--- Other documentation and instructions can then be added here as you go,
@@ -84,14 +101,12 @@ In this repository, we use the following tools:
     - for these purposes, git is a great version-control system so we don't
       complicate things any further. For an introduction to Git, see
       [this introduction from Software Carpentry](http://swcarpentry.github.io/git-novice/).
-- [Pixi](https://pixi.sh/latest/) for environment management
+- [uv](https://docs.astral.sh/uv/) for environment management
   (for more on environment management, see
   [general principles: environment management](https://gitlab.com/znicholls/mullet-rse/-/blob/main/book/theory/environment-management.md))
     - there are lots of environment management systems.
-      Pixi works well in our experience and,
-      for projects that need conda,
-      it is the only solution we have tried that worked really well.
-    - we track the `pixi.lock` file so that the environment
+      uv works well in our experience.
+    - we track the `uv.lock` file so that the environment
       is completely reproducible on other machines or by other people
       (e.g. if you want a colleague to take a look at what you've done)
 - [pre-commit](https://pre-commit.com/) with some very basic settings to get some
