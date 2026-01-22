@@ -34,6 +34,7 @@ from scales_cv.util import (
     create_nodes_for_plotting,
     detrend_dataframe,
     select_data,
+    split_overshoot,
 )
 from tigramite.independence_tests.parcorr import ParCorr
 
@@ -48,48 +49,36 @@ from tigramite.independence_tests.parcorr import ParCorr
 # ## import
 
 # %%
+freq = "annual"
+
 input_folder = Path().resolve().parent / "data" / "SSP5-34-EXT"
-output_folder = Path().resolve().parent / "outputs" / "SSP5-34-EXT"
+output_folder = Path().resolve().parent / "outputs" / "SSP5-34-EXT" / freq
 os.makedirs(Path(output_folder), exist_ok=True)
-experiment_dd = None
+
+in_file = f"tas_Amon_ACCESS-ESM1-5_SSP5-34-EXT_{freq}.csv"
+
+input_df = pd.read_csv(Path(input_folder / in_file))
+
+if freq == "monthly":
+    input_df["time"] = input_df["time"].apply(
+        lambda x: cftime.DatetimeGregorian(int(x[:4]), int(x[5:7]), 1)
+    )
 
 # %%
-ssp534_annual = pd.read_csv(Path(input_folder / "SSP5-34-EXT_annual.csv"))
-ssp534_monthly = pd.read_csv(Path(input_folder / "SSP5-34-EXT_monthly.csv"))
-ssp534_monthly["time"] = ssp534_monthly["time"].apply(
-    lambda x: cftime.DatetimeGregorian(int(x[:4]), int(x[5:7]), 1)
+experiment_dd = "stabilisation"
+
+df = split_overshoot(
+    input_df,
+    experiment_dd,
+    peak_year=2060,
+    return_year=2170,
+    time_col="year",
+    freq=freq,
 )
 
 # %%
-ssp534_monthly
-
-# %%
-# split into three phases of overshoot: ramp-up, ramp-down, stabilisation
-peak_year = 2060
-return_year = 2170
-
-annual_df_up = ssp534_annual[ssp534_annual["year"] <= peak_year]
-annual_df_down = ssp534_annual[
-    (ssp534_annual["year"] > peak_year) & (ssp534_annual["year"] < return_year)
-]
-annual_df_stab = ssp534_annual[ssp534_annual["year"] >= return_year]
-
-monthly_df_up = ssp534_monthly[
-    ssp534_monthly["time"].apply(lambda t: t.year <= peak_year)
-]
-monthly_df_down = ssp534_monthly[
-    ssp534_monthly["time"].apply(
-        lambda t: (t.year > peak_year) and (t.year <= return_year)
-    )
-]
-monthly_df_stab = ssp534_monthly[
-    ssp534_monthly["time"].apply(lambda t: t.year >= return_year)
-]
-
-# %%
 # Get AR6 abbreviations in correct mask order
-ar6 = regionmask.defined_regions.ar6.all.abbrevs
-ar6_abbrevs = ar6.abbrevs
+ar6_abbrevs = regionmask.defined_regions.ar6.all.abbrevs
 
 names = ar6_abbrevs  # or a selection such as ["EPO", "NPO", "NAO", "SAM", "NWN"]
 names = regionmask.defined_regions.ar6.ocean.abbrevs
@@ -98,10 +87,10 @@ names = regionmask.defined_regions.ar6.ocean.abbrevs
 # ## detrend
 
 # %%
-detrended_annual_df_stab = {}
+detrended = {}
 time_col = "year"
 
-for member, df_member in annual_df_stab.groupby("member"):
+for member, df_member in df.groupby("member"):
     # Other columns to keep (metadata, etc.)
     other_cols = [c for c in df_member.columns if c not in names + [time_col]]
 
@@ -118,21 +107,7 @@ for member, df_member in annual_df_stab.groupby("member"):
     df_detrended = df_detrended[df_member.columns]
 
     # Store in dictionary
-    detrended_annual_df_stab[member] = df_detrended
-
-# %%
-plt.plot(
-    detrended_annual_df_stab[list(detrended_annual_df_stab.keys())[1]]["year"],
-    detrended_annual_df_stab[list(detrended_annual_df_stab.keys())[1]]["SOO"],
-)
-plt.plot(
-    detrended_annual_df_stab[list(detrended_annual_df_stab.keys())[2]]["year"],
-    detrended_annual_df_stab[list(detrended_annual_df_stab.keys())[2]]["SOO"],
-)
-plt.plot(
-    detrended_annual_df_stab[list(detrended_annual_df_stab.keys())[3]]["year"],
-    detrended_annual_df_stab[list(detrended_annual_df_stab.keys())[3]]["SOO"],
-)
+    detrended[member] = df_detrended
 
 # %% [markdown]
 # ## define regions for plotting
@@ -144,7 +119,7 @@ node_pos = create_nodes_for_plotting(names)
 # # Causal analysis
 
 # %%
-keys = list(detrended_annual_df_stab.keys())
+keys = list(detrended.keys())
 
 # %%
 # Your data shape
@@ -167,7 +142,7 @@ print(mask.shape)  # (1980, 58)
 print(mask)
 
 # %%
-detrended_annual_df_stab[keys[1]]
+detrended[keys[1]]
 
 # %%
 tau_max = 5
@@ -176,7 +151,7 @@ Links_dict = {}
 
 
 for i in keys:
-    temp = detrended_annual_df_stab[i]
+    temp = detrended[i]
     data, std_devs = select_data(temp, names)
 
     results, graph, Links, fig = run_pcmci_analysis(
@@ -189,10 +164,10 @@ for i in keys:
         # mask=mask,
         tag="training",
         plot_timeseries=False,
-        # output_folder=output_folder,
-        # in_file=input_folder / in_file,
+        output_folder=output_folder,
+        in_file=input_folder / in_file,
         sourceDD=f"member_{i}",
-        experiment_dd="stabilisation",
+        experiment_dd=experiment_dd,
         node_pos=node_pos,
         verbosity=0,
     )
@@ -201,7 +176,7 @@ for i in keys:
 
 # %%
 agg, freq = aggregate_links_weighted(
-    Links_dict, min_freq_to_keep=6, method="median", weight_mode="freq/num", gamma=0.6
+    Links_dict, min_freq_to_keep=6, method="median", weight_mode="freq/num", gamma=1
 )
 
 # %% [markdown]
@@ -236,10 +211,10 @@ em_results, em_graph, em_Links, em_fig = run_pcmci_analysis(
     ci_test=ParCorr,
     tag="emulation",
     plot_timeseries=True,
-    # output_folder=output_folder,
-    # in_file=input_folder / in_file,
+    output_folder=output_folder,
+    in_file=input_folder / in_file,
     sourceDD="ACCESS-ESM1-5",
-    experiment_dd="DJF_num6",
+    experiment_dd=experiment_dd,
     node_pos=node_pos,
     verbosity=0,
 )
@@ -268,6 +243,8 @@ ensemble_differences = []
 all_links = []
 std_dict = {"training": std_devs}
 
+ensemble_folder = output_folder / f"ensemble_{experiment_dd}"
+os.makedirs(Path(ensemble_folder), exist_ok=True)
 
 for i in range(30):
     emulated, emulated_df, em_std_devs, coeffs = causal_model(
@@ -282,10 +259,10 @@ for i in range(30):
         ci_test=ParCorr,
         tag=f"emulation_{i}",
         plot_timeseries=False,
-        output_folder=output_folder,
-        # in_file=input_folder / in_file,
+        output_folder=ensemble_folder,
+        in_file=input_folder / in_file,
         sourceDD="ACCESS-ESM1-5",
-        experiment_dd="esm-flat10-zec",
+        experiment_dd=experiment_dd,
         node_pos=node_pos,
         verbosity=0,
         show_figure=False,
@@ -305,11 +282,18 @@ for i in range(30):
 
 
 df_diff = pd.concat(ensemble_differences, ignore_index=True)
-df_diff.to_csv(Path(output_folder) / "ensemble_link_differences.csv", index=False)
+df_diff.to_csv(Path(ensemble_folder) / "ensemble_link_differences.csv", index=False)
 
 df_all = pd.concat(all_links, ignore_index=True)
-df_all.to_csv("ensemble_all_links.csv", index=False)
+df_all.to_csv(Path(ensemble_folder) / "ensemble_all_links.csv", index=False)
 
-std_df = pd.concat(std_dict, axis=1)
+
+regions = std_dict["training"].index
+# convert all std_dev dictionary entries to Series
+std_dict_fixed = {
+    k: (v if isinstance(v, pd.Series) else pd.Series(v, index=regions))
+    for k, v in std_dict.items()
+}
+std_df = pd.concat(std_dict_fixed, axis=1)
 std_df.index.name = "region"
-std_df.to_csv(Path(output_folder) / "ensemble_std_devs.csv")
+std_df.to_csv(Path(ensemble_folder) / "ensemble_std_devs.csv")

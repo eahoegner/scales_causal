@@ -177,3 +177,18 @@ def create_nodes_for_plotting(names):
 
     print(f"✅ node_pos created for {len(valid_names)} nodes.")
     return node_pos
+
+
+def split_overshoot(df, phase, *, peak_year, return_year, time_col, freq):
+    year = df[time_col] if freq == "annual" else df[time_col].dt.year
+
+    masks = {
+        "ramp-up": year <= peak_year,
+        "ramp-down": (year > peak_year) & (year < return_year),
+        "stabilisation": year >= return_year,
+    }
+
+    if phase not in masks:
+        raise ValueError(f"Unknown phase: {phase}")
+
+    return df.loc[masks[phase]]
