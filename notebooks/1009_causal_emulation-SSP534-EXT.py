@@ -65,7 +65,7 @@ if freq == "monthly":
     )
 
 # %%
-experiment_dd = "stabilisation"
+experiment_dd = "ramp-down"
 
 df = split_overshoot(
     input_df,
@@ -175,7 +175,7 @@ for i in keys:
     Links_dict[i] = Links
 
 # %%
-agg, freq = aggregate_links_weighted(
+agg, frequency = aggregate_links_weighted(
     Links_dict, min_freq_to_keep=6, method="median", weight_mode="freq/num", gamma=1
 )
 
