@@ -1,4 +1,4 @@
-# My Python repo
+# prototype of causal variability module for SCALES
 <!--- Adding a one-line description of what this repository is for here may be
 helpful -->
 <!---
