@@ -23,6 +23,7 @@ import pandas as pd
 import seaborn as sns
 import xarray as xr
 from matplotlib import pyplot as plt
+import regionmask
 
 # %%
 folder = Path(
@@ -176,10 +177,30 @@ long_df = annual_df.melt(
 
 mean_df = long_df.groupby(["region", "year"], as_index=False)["value"].mean()
 
+# %%
+ocean_regions = regionmask.defined_regions.ar6.ocean.abbrevs
+arctic_regions = ["ARO", "GIC", "NWN"]
+
+# %%
+keep_cols = ["year", "member"] + [
+    c for c in annual_df.columns if c in ocean_regions
+]
+
+df_ocean = annual_df.loc[:, keep_cols]
+
+keep_cols = ["year", "member"] + [
+    c for c in annual_df.columns if c in arctic_regions
+]
+
+df_arctic = annual_df.loc[:, keep_cols]
+
+# %%
+df_arctic
+
 
 # %%
 def plot_ensemble_panels(
-    annual_df,
+    df=df,
     value_cols=None,
     ncols=2,
     member_alpha=0.3,
@@ -203,6 +224,13 @@ def plot_ensemble_panels(
     # Default value columns
     if value_cols is None:
         value_cols = [c for c in df.columns if c not in ["member", "year"]]
+
+    df["year"] = pd.to_numeric(df["year"])
+
+    value_cols = [c for c in df.columns if c not in ["member", "year"]]
+
+    # convert to numeric (coerce invalid entries to NaN)
+    df[value_cols] = df[value_cols].apply(pd.to_numeric, errors="coerce")
 
     # Melt to long format
     long_df = df.melt(
@@ -266,7 +294,7 @@ def plot_ensemble_panels(
 
 
 # %%
-fig = plot_ensemble_panels(annual_df, value_cols=None, ncols=4, show_quantiles=True)
+fig = plot_ensemble_panels(df_ocean, value_cols=None, ncols=5, show_quantiles=True)
 
 # %%
 outpath = Path(
@@ -275,7 +303,7 @@ outpath = Path(
 outpath.mkdir(parents=True, exist_ok=True)
 
 # %%
-fig.savefig(outpath / "annual_regional_plots_HR.png", dpi=300, bbox_inches="tight")
+fig.savefig(outpath / "annual_regional_plots_ocean_only.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 

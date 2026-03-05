@@ -2,6 +2,7 @@ import cartopy.crs as ccrs
 import numpy as np
 import pandas as pd
 import regionmask
+from scipy.ndimage import gaussian_filter1d
 
 
 def weights_calculate(x0, X, tau):
@@ -43,6 +44,20 @@ def detrend_dataframe(df, time_col="time", tau=20, verbose=True):
 
     if verbose:
         print(f"\n✅ Detrending complete. tau={tau}")
+    return df_detrended, df_trend
+
+
+def detrend_gaussian(df, time_col="time", tau=40):
+    var_cols = [c for c in df.columns if c != time_col]
+    sigma = tau  # tau already in time units (months)
+
+    df_trend = df.copy()
+    for c in var_cols:
+        df_trend[c] = gaussian_filter1d(df[c].values, sigma=sigma, mode="nearest")
+
+    df_detrended = df.copy()
+    df_detrended[var_cols] = df[var_cols] - df_trend[var_cols]
+
     return df_detrended, df_trend
 
 

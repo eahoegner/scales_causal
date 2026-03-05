@@ -65,7 +65,7 @@ if freq == "monthly":
     )
 
 # %%
-experiment_dd = "ramp-down"
+experiment_dd = "stabilisation"
 
 df = split_overshoot(
     input_df,
@@ -82,6 +82,9 @@ ar6_abbrevs = regionmask.defined_regions.ar6.all.abbrevs
 
 names = ar6_abbrevs  # or a selection such as ["EPO", "NPO", "NAO", "SAM", "NWN"]
 names = regionmask.defined_regions.ar6.ocean.abbrevs
+
+# %%
+df
 
 # %% [markdown]
 # ## detrend
@@ -193,7 +196,6 @@ emulated, emulated_df, em_std_devs, coeffs = causal_model(
     names=names,
     T=500,
     burn=200,
-    seed=411,
 )
 
 # %%
